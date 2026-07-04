@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
-import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun } from 'lucide-react';
+import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun, Cloud, RefreshCw, AlertCircle } from 'lucide-react';
 import type { AppSettings, NotificationPrefs } from '../../types';
 import { exportBackup, importBackup } from '../../utils/backupIO';
+import type { useSync } from '../../hooks/useSync';
 
 const MODELS = [
   { id: 'claude-sonnet-4-6',        label: 'Claude Sonnet 4.6',  desc: 'Best balance of speed and intelligence' },
@@ -13,9 +14,12 @@ const DEFAULT_NOTIF_PREFS: NotificationPrefs = {
   overdueTasks: true, dueTodayTasks: true, overBudget: true, nearBudget: true,
 };
 
+type SyncProps = ReturnType<typeof useSync>;
+
 interface Props {
   settings: AppSettings;
   onSave: (s: AppSettings) => void;
+  sync: SyncProps;
 }
 
 const inputCls = 'w-full text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-gray-400';
@@ -51,7 +55,7 @@ function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: str
   );
 }
 
-export function SettingsPage({ settings, onSave }: Props) {
+export function SettingsPage({ settings, onSave, sync }: Props) {
   const [apiKey, setApiKey] = useState(settings.anthropicApiKey);
   const [model, setModel] = useState(settings.aiModel || MODELS[0].id);
   const [darkMode, setDarkMode] = useState(settings.darkMode ?? false);
@@ -187,6 +191,60 @@ export function SettingsPage({ settings, onSave }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Cloud Sync */}
+          <div className="bg-white rounded-3xl p-6" style={cardShadow}>
+            <SectionHeader
+              icon={<div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center"><Cloud size={18} className="text-indigo-500" strokeWidth={1.75} /></div>}
+              title="Cloud Sync" sub="Automatic backup via Supabase" />
+
+            {sync.isConfigured ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: '#f8f9fc' }}>
+                  {sync.status === 'syncing' && <RefreshCw size={14} className="text-indigo-500 animate-spin shrink-0" />}
+                  {sync.status === 'synced'  && <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />}
+                  {sync.status === 'error'   && <AlertCircle size={14} className="text-red-400 shrink-0" />}
+                  {sync.status === 'idle'    && <Cloud size={14} className="text-gray-400 shrink-0" />}
+                  <div>
+                    <p className="text-xs font-medium text-gray-700">
+                      {sync.status === 'syncing' ? 'Syncing…'
+                        : sync.status === 'synced' ? 'All data synced'
+                        : sync.status === 'error'  ? 'Sync failed — check console'
+                        : 'Sync ready'}
+                    </p>
+                    {sync.lastSynced && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Last synced {new Date(sync.lastSynced).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => sync.push()}
+                    disabled={sync.status === 'syncing'}
+                    className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                    style={{ background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+                    <Upload size={14} /> Push now
+                  </button>
+                  <button
+                    onClick={async () => { await sync.pull(); window.location.reload(); }}
+                    disabled={sync.status === 'syncing'}
+                    className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                    style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>
+                    <Download size={14} /> Pull & reload
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 p-3 rounded-2xl" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-gray-500">
+                  Supabase env vars not detected. Add <code className="bg-gray-100 px-1 rounded">VITE_SUPABASE_URL</code> and <code className="bg-gray-100 px-1 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable cloud sync.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Data & Backup */}

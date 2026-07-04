@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { getSupabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase";
 
 export const SYNC_KEYS = [
   "lh-tasks",
@@ -14,27 +14,7 @@ export const SYNC_KEYS = [
   "lh-settings",
 ];
 
-const SYNC_CONFIG_KEY = "lh-sync-config";
 const USER_ID_KEY = "lh-sync-user-id";
-
-export interface SyncConfig {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-}
-
-export function getSyncConfig(): SyncConfig {
-  try {
-    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
-    if (!raw) return { supabaseUrl: "", supabaseAnonKey: "" };
-    return JSON.parse(raw) as SyncConfig;
-  } catch {
-    return { supabaseUrl: "", supabaseAnonKey: "" };
-  }
-}
-
-export function saveSyncConfig(config: SyncConfig): void {
-  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
-}
 
 export function getSyncUserId(): string {
   let id = localStorage.getItem(USER_ID_KEY);
@@ -52,19 +32,18 @@ export type SyncStatus =
   | "error"
   | "unconfigured";
 
-export function useSync(config: SyncConfig) {
+export function useSync() {
+  const isConfigured = supabase !== null;
   const [status, setStatus] = useState<SyncStatus>(
-    config.supabaseUrl && config.supabaseAnonKey ? "idle" : "unconfigured",
+    isConfigured ? "idle" : "unconfigured",
   );
   const [lastSynced, setLastSynced] = useState<string | null>(() =>
     localStorage.getItem("lh-last-cloud-sync"),
   );
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isConfigured = !!(config.supabaseUrl && config.supabaseAnonKey);
 
   const push = useCallback(async (): Promise<boolean> => {
-    const sb = getSupabase(config.supabaseUrl, config.supabaseAnonKey);
-    if (!sb) return false;
+    if (!supabase) return false;
 
     const userId = getSyncUserId();
     setStatus("syncing");
@@ -85,7 +64,7 @@ export function useSync(config: SyncConfig) {
         }
       }).filter((r): r is NonNullable<typeof r> => r !== null);
 
-      const { error } = await sb
+      const { error } = await supabase
         .from("lifehub_data")
         .upsert(rows, { onConflict: "user_id,key" });
       if (error) throw error;
@@ -100,17 +79,16 @@ export function useSync(config: SyncConfig) {
       setStatus("error");
       return false;
     }
-  }, [config.supabaseUrl, config.supabaseAnonKey]);
+  }, []);
 
   const pull = useCallback(async (): Promise<boolean> => {
-    const sb = getSupabase(config.supabaseUrl, config.supabaseAnonKey);
-    if (!sb) return false;
+    if (!supabase) return false;
 
     const userId = getSyncUserId();
     setStatus("syncing");
 
     try {
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from("lifehub_data")
         .select("key, value")
         .eq("user_id", userId);
@@ -137,7 +115,7 @@ export function useSync(config: SyncConfig) {
       setStatus("error");
       return false;
     }
-  }, [config.supabaseUrl, config.supabaseAnonKey]);
+  }, []);
 
   // Patch localStorage.setItem to detect data changes
   useEffect(() => {

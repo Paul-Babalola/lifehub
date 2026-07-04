@@ -11,6 +11,7 @@ import { AIAssistant } from './components/ai/AIAssistant';
 import { SearchOverlay } from './components/shared/SearchOverlay';
 import { BackupReminderBanner } from './components/shared/BackupReminderBanner';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useSync } from './hooks/useSync';
 import type { Page, AppSettings } from './types';
 import { getShareParam, clearShareParam } from './utils/shareUtils';
 
@@ -37,6 +38,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settings, setSettings] = useLocalStorage<AppSettings>('lh-settings', DEFAULT_SETTINGS);
+  const sync = useSync();
   const [shareImport, setShareImport] = useState<{ label: string; count: number; apply: () => void } | null>(null);
 
   // Apply dark mode on mount and when settings change
@@ -100,7 +102,7 @@ export default function App() {
             {page === 'grocery'   && <GroceryPage />}
             {page === 'notes'     && <NotesPage />}
             {page === 'habits'    && <HabitsPage />}
-            {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} />}
+            {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} sync={sync} />}
           </main>
 
           {aiOpen && (
