@@ -14,17 +14,6 @@ export const SYNC_KEYS = [
   "lh-settings",
 ];
 
-const USER_ID_KEY = "lh-sync-user-id";
-
-export function getSyncUserId(): string {
-  let id = localStorage.getItem(USER_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(USER_ID_KEY, id);
-  }
-  return id;
-}
-
 export type SyncStatus =
   | "idle"
   | "syncing"
@@ -32,8 +21,8 @@ export type SyncStatus =
   | "error"
   | "unconfigured";
 
-export function useSync() {
-  const isConfigured = supabase !== null;
+export function useSync(userId: string | null) {
+  const isConfigured = supabase !== null && userId !== null;
   const [status, setStatus] = useState<SyncStatus>(
     isConfigured ? "idle" : "unconfigured",
   );
@@ -43,9 +32,7 @@ export function useSync() {
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const push = useCallback(async (): Promise<boolean> => {
-    if (!supabase) return false;
-
-    const userId = getSyncUserId();
+    if (!supabase || !userId) return false;
     setStatus("syncing");
 
     try {
@@ -79,12 +66,10 @@ export function useSync() {
       setStatus("error");
       return false;
     }
-  }, []);
+  }, [userId]);
 
   const pull = useCallback(async (): Promise<boolean> => {
-    if (!supabase) return false;
-
-    const userId = getSyncUserId();
+    if (!supabase || !userId) return false;
     setStatus("syncing");
 
     try {
@@ -115,7 +100,7 @@ export function useSync() {
       setStatus("error");
       return false;
     }
-  }, []);
+  }, [userId]);
 
   // Patch localStorage.setItem to detect data changes
   useEffect(() => {

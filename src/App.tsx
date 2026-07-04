@@ -12,6 +12,8 @@ import { SearchOverlay } from './components/shared/SearchOverlay';
 import { BackupReminderBanner } from './components/shared/BackupReminderBanner';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useSync } from './hooks/useSync';
+import { useAuth } from './hooks/useAuth';
+import { AuthPage } from './components/auth/AuthPage';
 import type { Page, AppSettings } from './types';
 import { getShareParam, clearShareParam } from './utils/shareUtils';
 
@@ -38,7 +40,8 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settings, setSettings] = useLocalStorage<AppSettings>('lh-settings', DEFAULT_SETTINGS);
-  const sync = useSync();
+  const { user, loading, signInWithGoogle, signOut, isSupabaseConfigured } = useAuth();
+  const sync = useSync(user?.id ?? null);
   const [shareImport, setShareImport] = useState<{ label: string; count: number; apply: () => void } | null>(null);
 
   // Apply dark mode on mount and when settings change
@@ -79,6 +82,18 @@ export default function App() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
+  if (loading && isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f5f6fa 0%, #eef0f8 100%)' }}>
+        <div className="w-8 h-8 rounded-full border-2 border-indigo-300 border-t-indigo-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isSupabaseConfigured && !user) {
+    return <AuthPage onSignIn={() => signInWithGoogle()} />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden w-full">
       <Sidebar
@@ -102,7 +117,7 @@ export default function App() {
             {page === 'grocery'   && <GroceryPage />}
             {page === 'notes'     && <NotesPage />}
             {page === 'habits'    && <HabitsPage />}
-            {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} sync={sync} />}
+            {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} sync={sync} user={user} onSignOut={signOut} />}
           </main>
 
           {aiOpen && (

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun, Cloud, RefreshCw, AlertCircle } from 'lucide-react';
 import type { AppSettings, NotificationPrefs } from '../../types';
 import { exportBackup, importBackup } from '../../utils/backupIO';
+import type { User } from '@supabase/supabase-js';
 import type { useSync } from '../../hooks/useSync';
 
 const MODELS = [
@@ -20,6 +21,8 @@ interface Props {
   settings: AppSettings;
   onSave: (s: AppSettings) => void;
   sync: SyncProps;
+  user: User | null;
+  onSignOut: (() => void) | undefined;
 }
 
 const inputCls = 'w-full text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-gray-400';
@@ -55,7 +58,7 @@ function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: str
   );
 }
 
-export function SettingsPage({ settings, onSave, sync }: Props) {
+export function SettingsPage({ settings, onSave, sync, user, onSignOut }: Props) {
   const [apiKey, setApiKey] = useState(settings.anthropicApiKey);
   const [model, setModel] = useState(settings.aiModel || MODELS[0].id);
   const [darkMode, setDarkMode] = useState(settings.darkMode ?? false);
@@ -193,14 +196,37 @@ export function SettingsPage({ settings, onSave, sync }: Props) {
             </div>
           </div>
 
-          {/* Cloud Sync */}
+          {/* Cloud Sync & Account */}
           <div className="bg-white rounded-3xl p-6" style={cardShadow}>
             <SectionHeader
               icon={<div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center"><Cloud size={18} className="text-indigo-500" strokeWidth={1.75} /></div>}
-              title="Cloud Sync" sub="Automatic backup via Supabase" />
+              title="Cloud Sync" sub="Synced across devices via Supabase" />
+
+            {user && (
+              <div className="flex items-center gap-3 p-3 rounded-2xl mb-4" style={{ background: '#f8f9fc' }}>
+                {user.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="" className="w-8 h-8 rounded-full shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-semibold text-indigo-600">
+                      {(user.user_metadata?.full_name ?? user.email ?? '?')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{user.user_metadata?.full_name ?? 'Signed in'}</p>
+                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                </div>
+                <button
+                  onClick={onSignOut}
+                  className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold text-red-500 hover:bg-red-50 transition-colors border border-red-100">
+                  Sign out
+                </button>
+              </div>
+            )}
 
             {sync.isConfigured ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: '#f8f9fc' }}>
                   {sync.status === 'syncing' && <RefreshCw size={14} className="text-indigo-500 animate-spin shrink-0" />}
                   {sync.status === 'synced'  && <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />}
