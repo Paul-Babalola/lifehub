@@ -16,7 +16,7 @@ export function JournalView() {
   const [content, setContent] = useState(todayEntry?.content ?? '');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!content.trim()) return;

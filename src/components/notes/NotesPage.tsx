@@ -45,7 +45,7 @@ function NoteEditor({ note, onAdd, onUpdate, onClose }: {
   const [content, setContent] = useState(note.content ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const noteIdRef = useRef<string | undefined>(note.id);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!title.trim() && !content.trim()) return;

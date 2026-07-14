@@ -256,7 +256,7 @@ export function useSync(userId: string | null) {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
-          "apikey": supabaseAnonKey,
+          "apikey": supabaseAnonKey as string,
           "Prefer": "resolution=merge-duplicates,return=minimal",
         },
         body: JSON.stringify(rows),
@@ -296,7 +296,7 @@ export function useSync(userId: string | null) {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
