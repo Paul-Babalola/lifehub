@@ -5,9 +5,11 @@ import { nanoid } from '../utils/nanoid';
 export function useNotes() {
   const [notes, setNotes] = useLocalStorage<Note[]>('lh-notes', []);
 
-  const addNote = (title: string, content: string) => {
+  const addNote = (title: string, content: string): string => {
+    const id = nanoid();
     const now = new Date().toISOString();
-    setNotes(prev => [{ id: nanoid(), title, content, createdAt: now, updatedAt: now }, ...prev]);
+    setNotes(prev => [{ id, title, content, createdAt: now, updatedAt: now }, ...prev]);
+    return id;
   };
 
   const updateNote = (id: string, updates: Partial<Pick<Note, 'title' | 'content'>>) => {

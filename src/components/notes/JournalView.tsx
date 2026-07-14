@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useJournal } from '../../hooks/useJournal';
 import type { JournalEntry } from '../../types';
 import { format } from 'date-fns';
+import { Check } from 'lucide-react';
 
 const MOOD_EMOJIS: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😊' };
 const TODAY = format(new Date(), 'yyyy-MM-dd');
@@ -14,11 +15,19 @@ export function JournalView() {
   const [mood, setMood] = useState<JournalEntry['mood']>(todayEntry?.mood ?? 3);
   const [content, setContent] = useState(todayEntry?.content ?? '');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleSave = () => {
+  useEffect(() => {
     if (!content.trim()) return;
-    saveEntry(TODAY, content.trim(), mood);
-  };
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      saveEntry(TODAY, content.trim(), mood);
+      setSaveStatus('saved');
+    }, 800);
+    return () => clearTimeout(timerRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, mood]);
 
   const past = [...entries]
     .filter(e => e.date !== TODAY)
@@ -51,13 +60,13 @@ export function JournalView() {
           className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-gray-400 resize-none"
         />
 
-        <button
-          onClick={handleSave}
-          disabled={!content.trim()}
-          className="mt-3 w-full py-2.5 text-sm font-semibold text-white rounded-xl transition-all hover:opacity-90 disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
-          {todayEntry ? 'Update entry' : 'Save entry'}
-        </button>
+        <div className="mt-3 flex items-center justify-end h-6">
+          {saveStatus === 'saved' && (
+            <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium">
+              <Check size={11} strokeWidth={2.5} /> Saved
+            </span>
+          )}
+        </div>
       </div>
 
       {past.length > 0 && (

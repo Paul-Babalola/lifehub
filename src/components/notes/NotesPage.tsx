@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, Edit2, FileText, Search, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Edit2, FileText, Search, X, Check } from 'lucide-react';
 import { useNotes } from '../../hooks/useNotes';
 import type { Note } from '../../types';
 import { format, parseISO } from 'date-fns';
@@ -35,24 +35,49 @@ function NoteCard({ note, onEdit, onDelete }: { note: Note; onEdit: () => void; 
   );
 }
 
-function NoteEditor({ note, onSave, onClose }: {
+function NoteEditor({ note, onAdd, onUpdate, onClose }: {
   note: Partial<Note>;
-  onSave: (title: string, content: string) => void;
+  onAdd: (title: string, content: string) => string;
+  onUpdate: (id: string, updates: Partial<Pick<Note, 'title' | 'content'>>) => void;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(note.title ?? '');
   const [content, setContent] = useState(note.content ?? '');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const noteIdRef = useRef<string | undefined>(note.id);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const save = () => {
-    if (!title.trim() && !content.trim()) { onClose(); return; }
-    onSave(title.trim() || 'Untitled', content);
+  useEffect(() => {
+    if (!title.trim() && !content.trim()) return;
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (noteIdRef.current) {
+        onUpdate(noteIdRef.current, { title: title.trim() || 'Untitled', content });
+      } else {
+        noteIdRef.current = onAdd(title.trim() || 'Untitled', content);
+      }
+      setSaveStatus('saved');
+    }, 800);
+    return () => clearTimeout(timerRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, content]);
+
+  const handleClose = () => {
+    clearTimeout(timerRef.current);
+    if (title.trim() || content.trim()) {
+      if (noteIdRef.current) {
+        onUpdate(noteIdRef.current, { title: title.trim() || 'Untitled', content });
+      } else {
+        onAdd(title.trim() || 'Untitled', content);
+      }
+    }
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(6px)' }}
-      onClick={save}>
+      onClick={handleClose}>
       <div
         onClick={e => e.stopPropagation()}
         className="modal-enter bg-white rounded-3xl w-full max-w-2xl flex flex-col"
@@ -68,12 +93,12 @@ function NoteEditor({ note, onSave, onClose }: {
             className="flex-1 text-sm font-semibold text-gray-900 bg-transparent outline-none placeholder:text-gray-300"
             autoFocus
           />
-          <button onClick={save}
-            className="text-xs px-4 py-1.5 rounded-lg text-white font-semibold transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
-            Save
-          </button>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-1">
+          {saveStatus === 'saved' && (
+            <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium">
+              <Check size={11} strokeWidth={2.5} /> Saved
+            </span>
+          )}
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-1">
             <X size={16} />
           </button>
         </div>
@@ -186,14 +211,16 @@ export function NotesPage() {
       {editing === 'new' && (
         <NoteEditor
           note={{}}
-          onSave={(title, content) => addNote(title, content)}
+          onAdd={addNote}
+          onUpdate={updateNote}
           onClose={() => setEditing(null)}
         />
       )}
       {editing && editing !== 'new' && (
         <NoteEditor
           note={editing}
-          onSave={(title, content) => updateNote(editing.id, { title, content })}
+          onAdd={addNote}
+          onUpdate={updateNote}
           onClose={() => setEditing(null)}
         />
       )}
