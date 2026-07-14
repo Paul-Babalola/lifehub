@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, ChevronDown, ChevronRight, Trash2, Edit2, Check, Calendar, RefreshCw, FolderOpen, Upload, Download, FileJson, FileText, FileSpreadsheet, AlertCircle, CheckCircle2, List, Columns3, Share2, Link } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Trash2, Edit2, Check, Calendar, RefreshCw, FolderOpen, Upload, Download, FileJson, FileText, FileSpreadsheet, AlertCircle, CheckCircle2, List, Columns3, Share2, Link, Target } from 'lucide-react';
 import { useTasks } from '../../hooks/useTasks';
 import { Modal } from '../shared/Modal';
 import type { Task, Priority, Project } from '../../types';
@@ -7,10 +7,11 @@ import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { exportJSON, exportCSV, exportText, exportDOCX, importJSON, importCSV, importText, importDOCX } from '../../utils/taskIO';
 import { CalendarView } from './CalendarView';
 import { KanbanView } from './KanbanView';
+import { GoalsView } from './GoalsView';
 import { createShareUrl, copyToClipboard } from '../../utils/shareUtils';
 import type { SharePayload } from '../../utils/shareUtils';
 
-type TaskView = 'list' | 'calendar' | 'kanban';
+type TaskView = 'list' | 'calendar' | 'kanban' | 'goals';
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   low: '#10b981', medium: '#f59e0b', high: '#ef4444',
@@ -410,7 +411,7 @@ export function TasksPage() {
           <div className="flex gap-1.5 items-center">
             {/* View toggle */}
             <div className="flex gap-0.5 p-0.5 rounded-xl border border-gray-200 bg-white">
-              {([['list', <List size={14} />], ['calendar', <Calendar size={14} />], ['kanban', <Columns3 size={14} />]] as [TaskView, React.ReactNode][]).map(([v, icon]) => (
+              {([['list', <List size={14} />], ['calendar', <Calendar size={14} />], ['kanban', <Columns3 size={14} />], ['goals', <Target size={14} />]] as [TaskView, React.ReactNode][]).map(([v, icon]) => (
                 <button key={v} onClick={() => setView(v)}
                   className={`p-1.5 rounded-lg transition-all ${view === v ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                   title={v.charAt(0).toUpperCase() + v.slice(1) + ' view'}>
@@ -491,6 +492,9 @@ export function TasksPage() {
         {view === 'kanban' && (
           <KanbanView tasks={filtered} onUpdate={(id, upd) => updateTask(id, upd)} />
         )}
+
+        {/* Goals view */}
+        {view === 'goals' && <GoalsView />}
 
         {/* List view */}
         {view === 'list' && (

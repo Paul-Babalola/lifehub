@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { CheckSquare, DollarSign, ShoppingCart, ChevronRight, Check, TrendingUp, TrendingDown, Wallet, Calendar, ShoppingBag } from 'lucide-react';
 import { useTasks } from '../../hooks/useTasks';
 import { useFinance } from '../../hooks/useFinance';
 import { useGrocery } from '../../hooks/useGrocery';
 import type { Page, Task, Priority } from '../../types';
 import { format, parseISO } from 'date-fns';
+import { WeeklyReview } from './WeeklyReview';
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   low: '#10b981', medium: '#f59e0b', high: '#ef4444',
@@ -82,7 +84,8 @@ function TodayTaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) 
   );
 }
 
-export function DashboardPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
+export function DashboardPage({ onNavigate, userName }: { onNavigate: (p: Page) => void; userName?: string | null }) {
+  const [tab, setTab] = useState<'overview' | 'review'>('overview');
   const { tasks, toggleTask } = useTasks();
   const { getMonthlyStats } = useFinance();
   const { lists } = useGrocery();
@@ -101,7 +104,8 @@ export function DashboardPage({ onNavigate }: { onNavigate: (p: Page) => void })
   const activeTasks = tasks.filter(t => !t.done).length;
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greetingBase = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greeting = userName ? `${greetingBase}, ${userName}` : greetingBase;
   const dateStr = format(new Date(), 'EEEE, MMMM d');
 
   const cardShadow = { boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' };
@@ -109,6 +113,19 @@ export function DashboardPage({ onNavigate }: { onNavigate: (p: Page) => void })
   return (
     <div className="flex-1 overflow-y-auto p-6 fade-up">
       <div className="max-w-5xl mx-auto space-y-5">
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 p-1 rounded-xl self-start w-fit" style={{ background: '#f1f5f9' }}>
+          {(['overview', 'review'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+              {t === 'overview' ? 'Overview' : '📋 Weekly Review'}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'review' && <WeeklyReview />}
+        {tab === 'overview' && <>
 
         {/* Hero */}
         <div className="rounded-3xl p-6 relative overflow-hidden"
@@ -242,6 +259,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (p: Page) => void })
           </div>
         </div>
 
+        </>}
       </div>
     </div>
   );

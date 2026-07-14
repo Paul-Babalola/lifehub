@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun, Cloud, RefreshCw, AlertCircle } from 'lucide-react';
+import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun, Cloud, RefreshCw, AlertCircle, User as UserIcon } from 'lucide-react';
 import type { AppSettings, NotificationPrefs } from '../../types';
 import { exportBackup, importBackup } from '../../utils/backupIO';
 import type { User } from '@supabase/supabase-js';
@@ -23,6 +23,7 @@ interface Props {
   sync: SyncProps;
   user: User | null;
   onSignOut: (() => void) | undefined;
+  onUpdateProfile?: (firstName: string, lastName: string) => Promise<unknown> | undefined;
 }
 
 const inputCls = 'w-full text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-gray-400';
@@ -58,7 +59,7 @@ function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: str
   );
 }
 
-export function SettingsPage({ settings, onSave, sync, user, onSignOut }: Props) {
+export function SettingsPage({ settings, onSave, sync, user, onSignOut, onUpdateProfile }: Props) {
   const [apiKey, setApiKey] = useState(settings.anthropicApiKey);
   const [model, setModel] = useState(settings.aiModel || MODELS[0].id);
   const [darkMode, setDarkMode] = useState(settings.darkMode ?? false);
@@ -67,6 +68,27 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut }: Props)
   const [saved, setSaved] = useState(false);
   const [backupStatus, setBackupStatus] = useState<string | null>(null);
   const backupRef = useRef<HTMLInputElement>(null);
+
+  const meta = user?.user_metadata ?? {};
+  const [profileFirst, setProfileFirst] = useState<string>(
+    (meta.first_name as string | undefined) ?? (meta.full_name as string | undefined)?.split(' ')[0] ?? ''
+  );
+  const [profileLast, setProfileLast] = useState<string>(
+    (meta.last_name as string | undefined) ??
+    ((meta.full_name as string | undefined)?.split(' ').slice(1).join(' ') ?? '')
+  );
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  const saveProfile = async () => {
+    if (!profileFirst.trim()) { setProfileError('First name is required.'); return; }
+    setProfileError(null);
+    const res = await onUpdateProfile?.(profileFirst.trim(), profileLast.trim());
+    const r = res as { error?: { message: string } } | undefined;
+    if (r?.error) { setProfileError(r.error.message); return; }
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  };
 
   const cardShadow = { boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' };
 
@@ -105,6 +127,47 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut }: Props)
         </div>
 
         <div className="space-y-4">
+
+          {/* Profile */}
+          {user && onUpdateProfile && (
+            <div className="bg-white rounded-3xl p-6" style={cardShadow}>
+              <SectionHeader
+                icon={<div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center"><UserIcon size={18} className="text-indigo-500" strokeWidth={1.75} /></div>}
+                title="Profile" sub="Update your display name" />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">First name</label>
+                  <input
+                    type="text"
+                    value={profileFirst}
+                    onChange={e => setProfileFirst(e.target.value)}
+                    placeholder="First name"
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Last name</label>
+                  <input
+                    type="text"
+                    value={profileLast}
+                    onChange={e => setProfileLast(e.target.value)}
+                    placeholder="Last name"
+                    className={inputCls}
+                  />
+                </div>
+                {profileError && <p className="text-xs text-red-500">{profileError}</p>}
+                <button
+                  onClick={saveProfile}
+                  className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl font-semibold transition-all hover:opacity-90"
+                  style={profileSaved
+                    ? { background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }
+                    : { background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+                  {profileSaved ? <CheckCircle2 size={14} /> : null}
+                  {profileSaved ? 'Saved!' : 'Update name'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Appearance */}
           <div className="bg-white rounded-3xl p-6" style={cardShadow}>
@@ -209,12 +272,14 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut }: Props)
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
                     <span className="text-xs font-semibold text-indigo-600">
-                      {(user.user_metadata?.full_name ?? user.email ?? '?')[0].toUpperCase()}
+                      {((meta.first_name as string | undefined) ?? (meta.full_name as string | undefined) ?? user.email ?? '?')[0].toUpperCase()}
                     </span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{user.user_metadata?.full_name ?? 'Signed in'}</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {[meta.first_name, meta.last_name].filter(Boolean).join(' ') || (meta.full_name as string | undefined) || 'Signed in'}
+                  </p>
                   <p className="text-xs text-gray-400 truncate">{user.email}</p>
                 </div>
                 <button

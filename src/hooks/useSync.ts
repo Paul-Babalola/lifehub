@@ -7,10 +7,14 @@ export const SYNC_KEYS = [
   "lh-transactions",
   "lh-budgets",
   "lh-goals",
+  "lh-life-goals",
   "lh-grocery",
   "lh-notes",
   "lh-habits",
   "lh-habit-logs",
+  "lh-journal",
+  "lh-bookmarks",
+  "lh-mood",
   "lh-settings",
 ];
 

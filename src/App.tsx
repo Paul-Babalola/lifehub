@@ -13,7 +13,10 @@ import { BackupReminderBanner } from './components/shared/BackupReminderBanner';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useSync } from './hooks/useSync';
 import { useAuth } from './hooks/useAuth';
+import { useNotifications } from './hooks/useNotifications';
+import { useBrowserNotifications } from './hooks/useBrowserNotifications';
 import { AuthPage } from './components/auth/AuthPage';
+import { SetNewPasswordPage } from './components/auth/SetNewPasswordPage';
 import type { Page, AppSettings } from './types';
 import { getShareParam, clearShareParam } from './utils/shareUtils';
 
@@ -40,9 +43,27 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settings, setSettings] = useLocalStorage<AppSettings>('lh-settings', DEFAULT_SETTINGS);
-  const { user, loading, signInWithGoogle, signOut, isSupabaseConfigured } = useAuth();
+  const { user, loading, isRecoveryMode, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, setNewPassword, updateProfile, signOut, firstName, isSupabaseConfigured } = useAuth();
+  const notifications = useNotifications(settings.notifications);
+  useBrowserNotifications(notifications, !!(settings.notifications?.overdueTasks || settings.notifications?.dueTodayTasks || settings.notifications?.overBudget || settings.notifications?.nearBudget));
   const sync = useSync(user?.id ?? null);
   const [shareImport, setShareImport] = useState<{ label: string; count: number; apply: () => void } | null>(null);
+
+  // Pull cloud data once when a user first signs in on this device
+  useEffect(() => {
+    if (!user?.id || !isSupabaseConfigured) return;
+    const key = `lh-pulled-${user.id}`;
+    if (localStorage.getItem(key)) return;
+    sync.pull().then(pulled => {
+      if (pulled) {
+        localStorage.setItem(key, '1');
+        window.location.reload();
+      } else {
+        localStorage.setItem(key, '1');
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Apply dark mode on mount and when settings change
   useEffect(() => {
@@ -90,8 +111,19 @@ export default function App() {
     );
   }
 
+  if (isRecoveryMode) {
+    return <SetNewPasswordPage onSave={(pw) => setNewPassword?.(pw)} />;
+  }
+
   if (isSupabaseConfigured && !user) {
-    return <AuthPage onSignIn={() => signInWithGoogle()} />;
+    return (
+      <AuthPage
+        onSignIn={() => signInWithGoogle()}
+        onEmailSignIn={(email, password) => signInWithEmail?.(email, password)}
+        onEmailSignUp={(email, password, fn, ln) => signUpWithEmail?.(email, password, fn, ln)}
+        onResetPassword={(email) => resetPassword?.(email)}
+      />
+    );
   }
 
   return (
@@ -104,20 +136,21 @@ export default function App() {
         onOpenSearch={() => setSearchOpen(true)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        userName={firstName}
       />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <MobileHeader title={PAGE_TITLES[page]} onOpen={() => setMobileMenuOpen(true)} />
+        <MobileHeader title={PAGE_TITLES[page]} onOpen={() => setMobileMenuOpen(true)} userName={firstName} />
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <main className="flex-1 overflow-hidden flex flex-col">
-            {page === 'dashboard' && <DashboardPage onNavigate={setPage} />}
+            {page === 'dashboard' && <DashboardPage onNavigate={setPage} userName={firstName} />}
             {page === 'tasks'     && <TasksPage />}
             {page === 'finance'   && <FinancePage />}
             {page === 'grocery'   && <GroceryPage />}
             {page === 'notes'     && <NotesPage />}
             {page === 'habits'    && <HabitsPage />}
-            {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} sync={sync} user={user} onSignOut={signOut} />}
+            {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} sync={sync} user={user} onSignOut={signOut} onUpdateProfile={(fn, ln) => updateProfile?.(fn, ln)} />}
           </main>
 
           {aiOpen && (

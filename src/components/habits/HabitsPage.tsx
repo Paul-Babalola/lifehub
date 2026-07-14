@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Flame, Trash2, Check } from 'lucide-react';
 import { useHabits } from '../../hooks/useHabits';
+import { MoodView } from './MoodView';
 import { format, subDays } from 'date-fns';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#ef4444'];
@@ -15,6 +16,7 @@ export function HabitsPage() {
   const [name, setName]   = useState('');
   const [icon, setIcon]   = useState(ICONS[0]);
   const [color, setColor] = useState(COLORS[0]);
+  const [tab, setTab] = useState<'habits' | 'mood'>('habits');
 
   const handleAdd = () => {
     if (!name.trim()) return;
@@ -31,7 +33,7 @@ export function HabitsPage() {
       <div className="max-w-2xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-7">
+        <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Habits</h1>
             <p className="text-sm text-gray-400 mt-0.5">
@@ -40,14 +42,30 @@ export function HabitsPage() {
                 : `${completedToday} / ${habits.length} done today`}
             </p>
           </div>
-          <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1.5 text-sm px-4 py-2 text-white rounded-xl font-semibold transition-all hover:opacity-90 active:scale-[0.97]"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
-            <Plus size={15} strokeWidth={2.5} />
-            <span className="hidden sm:inline">Add Habit</span>
-          </button>
+          {tab === 'habits' && (
+            <button
+              onClick={() => setShowAdd(!showAdd)}
+              className="flex items-center gap-1.5 text-sm px-4 py-2 text-white rounded-xl font-semibold transition-all hover:opacity-90 active:scale-[0.97]"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+              <Plus size={15} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Add Habit</span>
+            </button>
+          )}
         </div>
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: '#f1f5f9' }}>
+          {(['habits', 'mood'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-sm font-semibold rounded-lg capitalize transition-all ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'mood' && <MoodView />}
+
+        {tab === 'habits' && <>
 
         {/* Add form */}
         {showAdd && (
@@ -181,6 +199,7 @@ export function HabitsPage() {
             })}
           </div>
         )}
+        </>}
       </div>
     </div>
   );

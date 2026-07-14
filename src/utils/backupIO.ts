@@ -1,6 +1,6 @@
 import { format, differenceInDays, parseISO } from 'date-fns';
 
-const BACKUP_KEYS = ['lh-tasks', 'lh-projects', 'lh-transactions', 'lh-budgets', 'lh-goals', 'lh-grocery', 'lh-notes', 'lh-habits', 'lh-habit-logs', 'lh-settings'];
+const BACKUP_KEYS = ['lh-tasks', 'lh-projects', 'lh-transactions', 'lh-budgets', 'lh-goals', 'lh-life-goals', 'lh-grocery', 'lh-notes', 'lh-habits', 'lh-habit-logs', 'lh-journal', 'lh-bookmarks', 'lh-mood', 'lh-settings'];
 const LAST_BACKUP_KEY = 'lh-last-backup'; // intentionally outside BACKUP_KEYS
 
 export function exportBackup(): void {

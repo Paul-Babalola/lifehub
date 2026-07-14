@@ -13,6 +13,7 @@ interface Props {
   onOpenSearch: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  userName?: string | null;
 }
 
 const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
@@ -27,7 +28,7 @@ const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
 
 const DEFAULT_SETTINGS: AppSettings = { anthropicApiKey: '', aiModel: 'claude-sonnet-4-6' };
 
-function SidebarContent({ page, onNavigate, aiOpen, onToggleAI, onOpenSearch, onCloseMobile }: Omit<Props, 'mobileOpen'>) {
+function SidebarContent({ page, onNavigate, aiOpen, onToggleAI, onOpenSearch, onCloseMobile, userName }: Omit<Props, 'mobileOpen'>) {
   const navigate = (p: Page) => { onNavigate(p); onCloseMobile(); };
   const [settings] = useLocalStorage<AppSettings>('lh-settings', DEFAULT_SETTINGS);
   const notifications = useNotifications(settings.notifications as NotificationPrefs | undefined);
@@ -75,6 +76,15 @@ function SidebarContent({ page, onNavigate, aiOpen, onToggleAI, onOpenSearch, on
 
       {/* Bottom actions */}
       <div className="px-3 pb-6 space-y-0.5">
+        {userName && (
+          <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm font-medium text-slate-300 truncate">{userName}</span>
+          </div>
+        )}
         <div className="mx-0 h-px bg-white/5 mb-3" />
 
         {/* Search button */}
@@ -128,13 +138,21 @@ export function Sidebar(props: Props) {
   );
 }
 
-export function MobileHeader({ onOpen, title }: { onOpen: () => void; title: string }) {
+export function MobileHeader({ onOpen, title, userName }: { onOpen: () => void; title: string; userName?: string | null }) {
   return (
     <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-30">
       <button onClick={onOpen} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
         <Menu size={20} />
       </button>
-      <span className="font-semibold text-gray-900">{title}</span>
+      <span className="font-semibold text-gray-900 flex-1">{title}</span>
+      {userName && (
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}
+        >
+          {userName.charAt(0).toUpperCase()}
+        </div>
+      )}
     </header>
   );
 }

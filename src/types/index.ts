@@ -121,3 +121,41 @@ export interface AppSettings {
 }
 
 export type Page = 'dashboard' | 'tasks' | 'finance' | 'grocery' | 'notes' | 'habits' | 'settings';
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  targetDate?: string;
+  progress: number;
+  milestones: { id: string; text: string; done: boolean }[];
+  category: 'health' | 'finance' | 'personal' | 'career' | 'learning' | 'other';
+  color: string;
+  createdAt: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  content: string;
+  mood: 1 | 2 | 3 | 4 | 5;
+  createdAt: string;
+}
+
+export interface Bookmark {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  tags: string[];
+  read: boolean;
+  createdAt: string;
+}
+
+export interface MoodEntry {
+  id: string;
+  date: string;
+  mood: 1 | 2 | 3 | 4 | 5;
+  note?: string;
+  createdAt: string;
+}
