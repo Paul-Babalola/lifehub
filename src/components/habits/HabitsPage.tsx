@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Plus, Flame, Trash2, Check } from 'lucide-react';
+import { Plus, Flame, Trash2, Check, Share2, Copy, X } from 'lucide-react';
 import { useHabits } from '../../hooks/useHabits';
+import { useAccountability } from '../../hooks/useAccountability';
+import { useAuth } from '../../hooks/useAuth';
 import { MoodView } from './MoodView';
+import { AccountabilityView } from './AccountabilityView';
 import { format, subDays } from 'date-fns';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#ef4444'];
@@ -10,13 +13,25 @@ const ICONS  = ['💪', '📚', '🧘', '💧', '🏃', '😴', '🥗', '✍️'
 const TODAY = format(new Date(), 'yyyy-MM-dd');
 const LAST_7 = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), 6 - i), 'yyyy-MM-dd'));
 
+interface ShareModal {
+  habitId: string;
+  habitName: string;
+  code: string | null;
+  generating: boolean;
+}
+
 export function HabitsPage() {
   const { habits, addHabit, deleteHabit, toggleLog, isLogged, getStreak } = useHabits();
+  const { user, displayName, isSupabaseConfigured } = useAuth();
+  const { createShare, pendingPairs, nudgeCount } = useAccountability(user?.id ?? null, displayName);
+
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName]   = useState('');
   const [icon, setIcon]   = useState(ICONS[0]);
   const [color, setColor] = useState(COLORS[0]);
-  const [tab, setTab] = useState<'habits' | 'mood'>('habits');
+  const [tab, setTab] = useState<'habits' | 'mood' | 'partners'>('habits');
+  const [shareModal, setShareModal] = useState<ShareModal | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleAdd = () => {
     if (!name.trim()) return;
@@ -25,8 +40,34 @@ export function HabitsPage() {
     setShowAdd(false);
   };
 
+  const handleShare = async (habitId: string, habitName: string) => {
+    // Check if there's already a pending share for this habit
+    const existing = pendingPairs.find(p => p.user1HabitId === habitId);
+    if (existing) {
+      setShareModal({ habitId, habitName, code: existing.inviteCode, generating: false });
+      return;
+    }
+    setShareModal({ habitId, habitName, code: null, generating: true });
+    const code = await createShare(habitId, habitName);
+    setShareModal({ habitId, habitName, code, generating: false });
+  };
+
+  const copyCode = () => {
+    if (shareModal?.code) {
+      navigator.clipboard.writeText(shareModal.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const completedToday = habits.filter(h => isLogged(h.id, TODAY)).length;
   const cardShadow = { boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' };
+
+  const TABS = [
+    { key: 'habits' as const, label: 'Habits' },
+    { key: 'mood' as const, label: 'Mood' },
+    { key: 'partners' as const, label: 'Partners' },
+  ];
 
   return (
     <div className="flex-1 overflow-y-auto p-6 fade-up">
@@ -37,9 +78,10 @@ export function HabitsPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Habits</h1>
             <p className="text-sm text-gray-400 mt-0.5">
-              {habits.length === 0
-                ? 'Track daily habits and build streaks'
-                : `${completedToday} / ${habits.length} done today`}
+              {tab === 'habits'
+                ? habits.length === 0 ? 'Track daily habits and build streaks' : `${completedToday} / ${habits.length} done today`
+                : tab === 'partners' ? 'Stay accountable with a friend'
+                : 'Track your daily mood'}
             </p>
           </div>
           {tab === 'habits' && (
@@ -55,15 +97,21 @@ export function HabitsPage() {
 
         {/* Tab switcher */}
         <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: '#f1f5f9' }}>
-          {(['habits', 'mood'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-1.5 text-sm font-semibold rounded-lg capitalize transition-all ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`relative px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+              {t.label}
+              {t.key === 'partners' && nudgeCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-400 rounded-full" />
+              )}
             </button>
           ))}
         </div>
 
         {tab === 'mood' && <MoodView />}
+        {tab === 'partners' && (
+          <AccountabilityView userId={user?.id ?? null} displayName={displayName} />
+        )}
 
         {tab === 'habits' && <>
 
@@ -130,7 +178,6 @@ export function HabitsPage() {
         {/* Habit list */}
         {habits.length > 0 && (
           <div className="space-y-2">
-            {/* Column header — scrollable on narrow screens */}
             <div className="flex items-center gap-3 px-1 pb-1 overflow-x-auto">
               <div className="flex-1 min-w-[80px]" />
               <div className="flex gap-1 shrink-0">
@@ -141,12 +188,14 @@ export function HabitsPage() {
                 ))}
               </div>
               <div className="w-12 text-[10px] font-bold text-gray-300 text-center uppercase tracking-wide shrink-0">Streak</div>
+              {isSupabaseConfigured && <div className="w-5 shrink-0" />}
               <div className="w-5 shrink-0" />
             </div>
 
             {habits.map(h => {
               const streak = getStreak(h.id);
               const todayDone = isLogged(h.id, TODAY);
+              const hasPending = pendingPairs.some(p => p.user1HabitId === h.id);
               return (
                 <div key={h.id} className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 group overflow-x-auto" style={cardShadow}>
                   {/* Today check-in button */}
@@ -189,6 +238,16 @@ export function HabitsPage() {
                     </span>
                   </div>
 
+                  {/* Share (only when Supabase configured) */}
+                  {isSupabaseConfigured && (
+                    <button
+                      onClick={() => handleShare(h.id, h.name)}
+                      title="Share with accountability partner"
+                      className={`transition-all w-5 shrink-0 ${hasPending ? 'text-indigo-400' : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-indigo-400'}`}>
+                      <Share2 size={14} />
+                    </button>
+                  )}
+
                   {/* Delete */}
                   <button onClick={() => deleteHabit(h.id)}
                     className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all w-5 shrink-0">
@@ -201,6 +260,56 @@ export function HabitsPage() {
         )}
         </>}
       </div>
+
+      {/* Share modal */}
+      {shareModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(6px)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShareModal(null); }}>
+          <div className="relative bg-white rounded-3xl p-6 max-w-xs w-full text-center"
+            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}>
+            <button
+              onClick={() => setShareModal(null)}
+              className="absolute top-4 right-4 text-gray-300 hover:text-gray-500 transition-colors">
+              <X size={18} />
+            </button>
+
+            <div className="text-4xl mb-3">🤝</div>
+            <h2 className="text-base font-bold text-gray-900 mb-1">Share habit</h2>
+            <p className="text-sm text-gray-500 mb-5 truncate px-2">"{shareModal.habitName}"</p>
+
+            {shareModal.generating ? (
+              <div className="flex justify-center py-6">
+                <div className="w-6 h-6 rounded-full border-2 border-indigo-200 border-t-indigo-500 animate-spin" />
+              </div>
+            ) : shareModal.code ? (
+              <>
+                <div className="py-5 px-4 bg-indigo-50 rounded-2xl mb-4">
+                  <p className="text-3xl font-mono font-bold tracking-[0.3em] text-indigo-600">{shareModal.code}</p>
+                </div>
+                <button
+                  onClick={copyCode}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors mb-3">
+                  <Copy size={14} />
+                  {copied ? 'Copied!' : 'Copy code'}
+                </button>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Your partner enters this code in their <span className="font-semibold">Partners</span> tab to link up.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-red-500 py-4">Failed to generate code. Try again.</p>
+            )}
+
+            <button
+              onClick={() => setShareModal(null)}
+              className="w-full mt-4 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,11 +10,17 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { AIAssistant } from './components/ai/AIAssistant';
 import { SearchOverlay } from './components/shared/SearchOverlay';
 import { BackupReminderBanner } from './components/shared/BackupReminderBanner';
+import { PomodoroWidget } from './components/pomodoro/PomodoroWidget';
+import { InboxPage } from './components/inbox/InboxPage';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useSync } from './hooks/useSync';
 import { useAuth } from './hooks/useAuth';
 import { useNotifications } from './hooks/useNotifications';
 import { useBrowserNotifications } from './hooks/useBrowserNotifications';
+import { usePomodoro } from './hooks/usePomodoro';
+import { useInbox } from './hooks/useInbox';
+import { useTasks } from './hooks/useTasks';
+import { useNotes } from './hooks/useNotes';
 import { AuthPage } from './components/auth/AuthPage';
 import { SetNewPasswordPage } from './components/auth/SetNewPasswordPage';
 import type { Page, AppSettings } from './types';
@@ -24,6 +30,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   anthropicApiKey: '',
   aiModel: 'claude-sonnet-4-6',
   darkMode: false,
+  currency: 'USD',
   notifications: { overdueTasks: true, dueTodayTasks: true, overBudget: true, nearBudget: true },
 };
 
@@ -34,6 +41,7 @@ const PAGE_TITLES: Record<Page, string> = {
   grocery: 'Grocery',
   notes: 'Notes',
   habits: 'Habits',
+  inbox: 'Inbox',
   settings: 'Settings',
 };
 
@@ -42,6 +50,13 @@ export default function App() {
   const [aiOpen, setAiOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pomodoroOpen, setPomodoroOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureText, setCaptureText] = useState('');
+  const pomodoro = usePomodoro();
+  const { addItem: addInboxItem } = useInbox();
+  const { addTask } = useTasks();
+  const { addNote } = useNotes();
   const [settings, setSettings] = useLocalStorage<AppSettings>('lh-settings', DEFAULT_SETTINGS);
   const { user, loading, isRecoveryMode, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, setNewPassword, updateProfile, signOut, firstName, isSupabaseConfigured } = useAuth();
   const notifications = useNotifications(settings.notifications);
@@ -91,12 +106,17 @@ export default function App() {
     });
   }, []);
 
-  // Global Cmd+K shortcut for search
+  // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !e.shiftKey) {
         e.preventDefault();
         setSearchOpen(s => !s);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'k') {
+        e.preventDefault();
+        setCaptureText('');
+        setCaptureOpen(s => !s);
       }
     };
     document.addEventListener('keydown', handler);
@@ -134,6 +154,8 @@ export default function App() {
         aiOpen={aiOpen}
         onToggleAI={() => setAiOpen(!aiOpen)}
         onOpenSearch={() => setSearchOpen(true)}
+        onTogglePomodoro={() => setPomodoroOpen(o => !o)}
+        pomodoroOpen={pomodoroOpen}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
         userName={firstName}
@@ -150,6 +172,12 @@ export default function App() {
             {page === 'grocery'   && <GroceryPage />}
             {page === 'notes'     && <NotesPage />}
             {page === 'habits'    && <HabitsPage />}
+            {page === 'inbox'     && (
+              <InboxPage
+                onConvertToTask={text => { addTask({ title: text, description: '', done: false, priority: 'medium', subtasks: [] }); setPage('tasks'); }}
+                onConvertToNote={text => { addNote(text, ''); setPage('notes'); }}
+              />
+            )}
             {page === 'settings'  && <SettingsPage settings={settings} onSave={s => { setSettings(s); }} sync={sync} user={user} onSignOut={signOut} onUpdateProfile={(fn, ln) => updateProfile?.(fn, ln)} />}
           </main>
 
@@ -164,6 +192,57 @@ export default function App() {
       )}
 
       <BackupReminderBanner />
+
+      {/* Pomodoro widget */}
+      {pomodoroOpen && (
+        <PomodoroWidget
+          mode={pomodoro.mode}
+          minutes={pomodoro.minutes}
+          seconds={pomodoro.seconds}
+          progress={pomodoro.progress}
+          isRunning={pomodoro.isRunning}
+          sessions={pomodoro.sessions}
+          onStart={pomodoro.start}
+          onPause={pomodoro.pause}
+          onReset={pomodoro.reset}
+          onSkip={pomodoro.skip}
+          onSwitchMode={pomodoro.switchMode}
+          onClose={() => setPomodoroOpen(false)}
+        />
+      )}
+
+      {/* Quick capture overlay */}
+      {captureOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-32"
+          style={{ background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)' }}
+          onClick={e => { if (e.target === e.currentTarget) setCaptureOpen(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+              <span className="text-lg">✨</span>
+              <input
+                autoFocus
+                value={captureText}
+                onChange={e => setCaptureText(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && captureText.trim()) {
+                    addInboxItem(captureText.trim());
+                    setCaptureText('');
+                    setCaptureOpen(false);
+                  }
+                  if (e.key === 'Escape') setCaptureOpen(false);
+                }}
+                placeholder="Capture a thought… press Enter to save"
+                className="flex-1 text-sm text-gray-800 focus:outline-none placeholder:text-gray-400 font-medium"
+              />
+              <kbd className="text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 font-mono shrink-0">⏎</kbd>
+            </div>
+            <div className="px-4 py-2 flex items-center justify-between">
+              <p className="text-xs text-gray-400">Saved to Inbox · triage later</p>
+              <kbd className="text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 font-mono">⌘⇧K</kbd>
+            </div>
+          </div>
+        </div>
+      )}
 
       {shareImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"

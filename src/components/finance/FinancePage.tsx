@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, TrendingUp, TrendingDown, Wallet, Edit2, RefreshCw, Target, ArrowUpRight, ArrowDownRight, Upload, Download, FileJson, FileText, FileSpreadsheet, AlertCircle, CheckCircle2, Sparkles, Share2, Link } from 'lucide-react';
+import { SubscriptionsView } from './SubscriptionsView';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useFinance, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../hooks/useFinance';
+import { useCurrency } from '../../hooks/useCurrency';
 import { Modal } from '../shared/Modal';
 import type { Transaction } from '../../types';
 import { format, subMonths } from 'date-fns';
@@ -126,6 +128,7 @@ function TransactionForm({ onSave, initial }: {
 
 function BudgetSection({ month }: { month: string }) {
   const { budgets, upsertBudget, deleteBudget, copyBudgetsFromMonth, getCategorySpending, generateBudgetsFromHistory } = useFinance();
+  const { fmt, symbol } = useCurrency();
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [limit, setLimit] = useState('');
@@ -183,7 +186,7 @@ function BudgetSection({ month }: { month: string }) {
           <select value={category} onChange={e => setCategory(e.target.value)} className={`${inputCls} flex-1`}>
             {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input type="number" value={limit} onChange={e => setLimit(e.target.value)} className={`${inputCls} w-24`} placeholder="$" />
+          <input type="number" value={limit} onChange={e => setLimit(e.target.value)} className={`${inputCls} w-24`} placeholder={symbol} />
           <button onClick={() => { if (limit) { upsertBudget(category, parseFloat(limit), month); setLimit(''); setShowForm(false); } }}
             className="px-3 py-2 text-white text-sm rounded-xl font-semibold transition-opacity hover:opacity-90"
             style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>Save</button>
@@ -211,7 +214,7 @@ function BudgetSection({ month }: { month: string }) {
                   <span className="text-sm font-medium text-gray-700">{b.category}</span>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-semibold tabular-nums ${over ? 'text-red-500' : 'text-gray-500'}`}>
-                      ${spent.toFixed(0)} / ${b.limit.toFixed(0)}
+                      {fmt(spent)} / {fmt(b.limit)}
                     </span>
                     <button onClick={() => deleteBudget(b.id)} className="text-gray-300 hover:text-red-400 transition-colors">
                       <Trash2 size={12} />
@@ -223,7 +226,7 @@ function BudgetSection({ month }: { month: string }) {
                     style={{ width: `${pct}%`, background: barColor }} />
                 </div>
                 {projectedOver && projected !== null && (
-                  <p className="text-[10px] text-amber-500 mt-0.5">On pace for ${projected.toFixed(0)} this month</p>
+                  <p className="text-[10px] text-amber-500 mt-0.5">On pace for {fmt(projected)} this month</p>
                 )}
               </div>
             );
@@ -238,6 +241,7 @@ const GOAL_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f9
 
 function GoalsSection() {
   const { goals, addGoal, deleteGoal, contributeToGoal } = useFinance();
+  const { fmt, symbol } = useCurrency();
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName]     = useState('');
   const [target, setTarget] = useState('');
@@ -275,7 +279,7 @@ function GoalsSection() {
             className={inputCls} autoFocus onKeyDown={e => e.key === 'Enter' && handleAdd()} />
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{symbol}</span>
               <input type="number" min="0" value={target} onChange={e => setTarget(e.target.value)}
                 className={`${inputCls} pl-7`} placeholder="Target amount" />
             </div>
@@ -314,7 +318,7 @@ function GoalsSection() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold tabular-nums text-gray-500">
-                      ${g.saved.toFixed(0)} / ${g.target.toFixed(0)}
+                      {fmt(g.saved)} / {fmt(g.target)}
                     </span>
                     <button onClick={() => deleteGoal(g.id)} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all">
                       <Trash2 size={12} />
@@ -332,7 +336,7 @@ function GoalsSection() {
                 {contributeId === g.id && (
                   <div className="flex gap-2 mt-2">
                     <div className="relative flex-1">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">{symbol}</span>
                       <input type="number" min="0" value={contributeAmt} onChange={e => setContributeAmt(e.target.value)}
                         className="w-full text-xs pl-5 pr-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:border-indigo-400 transition-all"
                         placeholder="Amount to add" autoFocus />
@@ -358,7 +362,8 @@ const CARD_STYLES = [
   { gradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', shadow: 'rgba(99,102,241,0.25)', icon: <Wallet size={18} strokeWidth={2} />, label: 'Net', arrow: null },
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+function CustomTooltip({ active, payload, label }: any) {
+  const { fmt } = useCurrency();
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white rounded-xl p-3 shadow-xl border border-gray-100 text-xs">
@@ -367,12 +372,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <div key={p.dataKey} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
           <span className="text-gray-500">{p.name}:</span>
-          <span className="font-semibold text-gray-900">${Number(p.value).toFixed(2)}</span>
+          <span className="font-semibold text-gray-900">{fmt(Number(p.value))}</span>
         </div>
       ))}
     </div>
   );
-};
+}
 
 // ─── Import / Export modal ───────────────────────────────────────────────────
 
@@ -506,12 +511,14 @@ function FinanceIOModal({ transactions, onImport, onClose }: {
 
 export function FinancePage() {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, generateRecurring, autoCopyBudgets, importTransactions, getMonthlyStats, getCategorySpending } = useFinance();
+  const { fmt } = useCurrency();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [showIO, setShowIO] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [financeTab, setFinanceTab] = useState<'overview' | 'subscriptions'>('overview');
 
   useEffect(() => {
     generateRecurring();
@@ -567,6 +574,19 @@ export function FinancePage() {
           </div>
         </div>
 
+        {/* Finance tab switcher */}
+        <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: '#f1f5f9' }}>
+          {(['overview', 'subscriptions'] as const).map(t => (
+            <button key={t} onClick={() => setFinanceTab(t)}
+              className={`px-4 py-1.5 text-sm font-semibold rounded-lg capitalize transition-all ${financeTab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {financeTab === 'subscriptions' && <SubscriptionsView />}
+        {financeTab === 'overview' && <>
+
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {CARD_STYLES.map((c, i) => (
@@ -580,7 +600,7 @@ export function FinancePage() {
               </div>
               <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">{c.label}</p>
               <p className="text-2xl font-bold tracking-tight tabular">
-                {statValues[i] < 0 ? '-' : ''}${Math.abs(statValues[i]).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {fmt(statValues[i])}
               </p>
             </div>
           ))}
@@ -635,7 +655,7 @@ export function FinancePage() {
                       paddingAngle={3} dataKey="value" strokeWidth={0}>
                       {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} />
+                    <Tooltip formatter={(v) => fmt(Number(v))} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-2 overflow-hidden">
@@ -643,7 +663,7 @@ export function FinancePage() {
                     <div key={d.name} className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-xs text-gray-500 truncate flex-1">{d.name}</span>
-                      <span className="text-xs font-semibold text-gray-700 tabular">${d.value.toFixed(0)}</span>
+                      <span className="text-xs font-semibold text-gray-700 tabular">{fmt(d.value)}</span>
                     </div>
                   ))}
                   {pieData.length > 5 && <p className="text-xs text-gray-400">+{pieData.length - 5} more</p>}
@@ -691,7 +711,7 @@ export function FinancePage() {
                       </div>
                     </div>
                     <span className={`text-sm font-bold tabular shrink-0 ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                      {tx.type === 'income' ? '+' : '−'}${tx.amount.toFixed(2)}
+                      {tx.type === 'income' ? '+' : '−'}{fmt(tx.amount)}
                     </span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => setEditing(tx)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-200 text-gray-400 transition-colors"><Edit2 size={13} /></button>
@@ -708,6 +728,7 @@ export function FinancePage() {
             <GoalsSection />
           </div>
         </div>
+        </>}
       </div>
 
       {showShare && (

@@ -16,6 +16,7 @@ const PAGE_ICON: Record<Page, React.ReactNode> = {
   grocery:   null,
   notes:     null,
   habits:    null,
+  inbox:     null,
   settings:  null,
 };
 

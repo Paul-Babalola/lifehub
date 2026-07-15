@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
-import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun, Cloud, RefreshCw, AlertCircle, User as UserIcon } from 'lucide-react';
+import { Key, Bot, Shield, Eye, EyeOff, CheckCircle2, Moon, Bell, Download, Upload, HardDrive, Sun, Cloud, RefreshCw, AlertCircle, User as UserIcon, DollarSign } from 'lucide-react';
 import type { AppSettings, NotificationPrefs } from '../../types';
 import { exportBackup, importBackup } from '../../utils/backupIO';
+import { CURRENCIES } from '../../utils/currency';
 import type { User } from '@supabase/supabase-js';
 import type { useSync } from '../../hooks/useSync';
 
@@ -63,6 +64,7 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut, onUpdate
   const [apiKey, setApiKey] = useState(settings.anthropicApiKey);
   const [model, setModel] = useState(settings.aiModel || MODELS[0].id);
   const [darkMode, setDarkMode] = useState(settings.darkMode ?? false);
+  const [currency, setCurrency] = useState(settings.currency ?? 'USD');
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(settings.notifications ?? DEFAULT_NOTIF_PREFS);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -93,7 +95,7 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut, onUpdate
   const cardShadow = { boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' };
 
   const save = () => {
-    onSave({ anthropicApiKey: apiKey.trim(), aiModel: model, darkMode, notifications: notifPrefs });
+    onSave({ anthropicApiKey: apiKey.trim(), aiModel: model, darkMode, currency, notifications: notifPrefs });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -179,7 +181,7 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut, onUpdate
               onChange={v => {
                 setDarkMode(v);
                 document.documentElement.classList.toggle('dark', v);
-                onSave({ anthropicApiKey: apiKey.trim(), aiModel: model, darkMode: v, notifications: notifPrefs });
+                onSave({ anthropicApiKey: apiKey.trim(), aiModel: model, darkMode: v, currency, notifications: notifPrefs });
               }}
               label="Dark mode"
               sub="Switch between light and dark themes"
@@ -187,6 +189,27 @@ export function SettingsPage({ settings, onSave, sync, user, onSignOut, onUpdate
             <div className="flex items-center gap-3 mt-4 p-3 rounded-2xl" style={{ background: darkMode ? 'rgba(99,102,241,0.08)' : '#f8f9fc', border: '1px solid transparent' }}>
               <Sun size={14} className="text-amber-500 shrink-0" />
               <span className="text-xs text-gray-500">Currently using <strong className="text-gray-700">{darkMode ? 'dark' : 'light'}</strong> theme</span>
+            </div>
+          </div>
+
+          {/* Currency */}
+          <div className="bg-white rounded-3xl p-6" style={cardShadow}>
+            <SectionHeader
+              icon={<div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center"><DollarSign size={18} className="text-emerald-600" strokeWidth={1.75} /></div>}
+              title="Currency" sub="Used across Finance, Subscriptions, and Goals" />
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Display currency</label>
+              <select
+                value={currency}
+                onChange={e => setCurrency(e.target.value)}
+                className={inputCls}>
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.symbol} — {c.label} ({c.code})</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-2">
+                Changes how amounts are displayed. Your data is stored as plain numbers — switching currency doesn't convert values.
+              </p>
             </div>
           </div>
 

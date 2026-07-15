@@ -8,6 +8,7 @@ import { useFinance } from '../../hooks/useFinance';
 import { useGoals } from '../../hooks/useGoals';
 import { useJournal } from '../../hooks/useJournal';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { useCurrency } from '../../hooks/useCurrency';
 
 const MOOD_EMOJIS: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😊' };
 const MOOD_COLORS: Record<number, string> = { 1: '#ef4444', 2: '#f59e0b', 3: '#6366f1', 4: '#10b981', 5: '#22c55e' };
@@ -42,6 +43,7 @@ export function WeeklyReview() {
   const { goals } = useGoals();
   const { entries: journalEntries } = useJournal();
   const [reflection, setReflection] = useLocalStorage<string>(`lh-review-${weekKey}`, '');
+  const { fmt } = useCurrency();
 
   const isThisWeek = (dateStr: string) => {
     try {
@@ -214,18 +216,18 @@ export function WeeklyReview() {
               <div className="flex items-center gap-3 py-1">
                 <TrendingUp size={14} className="text-emerald-500 shrink-0" />
                 <span className="text-sm text-gray-600 flex-1">Income</span>
-                <span className="text-sm font-semibold text-emerald-600">${weekIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="text-sm font-semibold text-emerald-600">{fmt(weekIncome)}</span>
               </div>
               <div className="flex items-center gap-3 py-1">
                 <TrendingDown size={14} className="text-red-400 shrink-0" />
                 <span className="text-sm text-gray-600 flex-1">Expenses</span>
-                <span className="text-sm font-semibold text-red-500">${weekExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="text-sm font-semibold text-red-500">{fmt(weekExpenses)}</span>
               </div>
               <div className="h-px bg-gray-100 my-1" />
               <div className="flex items-center gap-3 py-1">
                 <span className="text-sm text-gray-600 flex-1 font-semibold">Net</span>
                 <span className="text-sm font-bold" style={{ color: weekIncome - weekExpenses >= 0 ? '#6366f1' : '#ef4444' }}>
-                  {weekIncome - weekExpenses < 0 ? '-' : '+'}${Math.abs(weekIncome - weekExpenses).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {weekIncome - weekExpenses >= 0 ? '+' : ''}{fmt(weekIncome - weekExpenses)}
                 </span>
               </div>
             </div>

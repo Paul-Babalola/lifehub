@@ -3,6 +3,7 @@ import { CheckSquare, DollarSign, ShoppingCart, ChevronRight, Check, TrendingUp,
 import { useTasks } from '../../hooks/useTasks';
 import { useFinance } from '../../hooks/useFinance';
 import { useGrocery } from '../../hooks/useGrocery';
+import { useCurrency } from '../../hooks/useCurrency';
 import type { Page, Task, Priority } from '../../types';
 import { format, parseISO } from 'date-fns';
 import { WeeklyReview } from './WeeklyReview';
@@ -46,12 +47,13 @@ function SectionHeader({ icon, title, sub, count, countColor, onNavigate }: {
 }
 
 function FinanceStat({ label, value, color, icon, bold }: { label: string; value: number; color: string; icon: React.ReactNode; bold?: boolean }) {
+  const { fmt } = useCurrency();
   return (
     <div className="flex items-center gap-3 py-1">
       <span style={{ color }}>{icon}</span>
       <span className={`text-sm flex-1 ${bold ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>{label}</span>
       <span className={`text-sm tabular ${bold ? 'font-bold' : 'font-semibold'}`} style={{ color }}>
-        {value < 0 ? '-' : ''}${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+        {fmt(value)}
       </span>
     </div>
   );
@@ -89,6 +91,7 @@ export function DashboardPage({ onNavigate, userName }: { onNavigate: (p: Page) 
   const { tasks, toggleTask } = useTasks();
   const { getMonthlyStats } = useFinance();
   const { lists } = useGrocery();
+  const { fmt } = useCurrency();
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const month = format(new Date(), 'yyyy-MM');
@@ -138,7 +141,7 @@ export function DashboardPage({ onNavigate, userName }: { onNavigate: (p: Page) 
               <Stat icon={<CheckSquare size={14} />} value={activeTasks} label="active tasks" color="#818cf8" />
               <Stat
                 icon={<DollarSign size={14} />}
-                value={`$${Math.abs(stats.net).toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
+                value={fmt(Math.abs(stats.net))}
                 label={`net ${stats.net >= 0 ? 'saved' : 'spent'} this month`}
                 color="#34d399"
               />

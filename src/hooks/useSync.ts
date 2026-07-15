@@ -58,6 +58,8 @@ export const SYNC_KEYS = [
   "lh-bookmarks",
   "lh-mood",
   "lh-settings",
+  "lh-subscriptions",
+  "lh-inbox",
 ];
 
 export type SyncStatus =

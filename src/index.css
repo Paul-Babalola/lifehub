@@ -28,6 +28,16 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Liquid orb wave animations */
+@keyframes wave1 {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-200px); }
+}
+@keyframes wave2 {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-200px); }
+}
 .fade-up { animation: fade-up 0.22s ease forwards; }
 
 /* Scrollbar */

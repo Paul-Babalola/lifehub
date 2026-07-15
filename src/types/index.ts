@@ -118,9 +118,28 @@ export interface AppSettings {
   aiModel: string;
   darkMode?: boolean;
   notifications?: NotificationPrefs;
+  currency?: string;
 }
 
-export type Page = 'dashboard' | 'tasks' | 'finance' | 'grocery' | 'notes' | 'habits' | 'settings';
+export type Page = 'dashboard' | 'tasks' | 'finance' | 'grocery' | 'notes' | 'habits' | 'inbox' | 'settings';
+
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  cycle: 'weekly' | 'monthly' | 'yearly';
+  category: string;
+  nextRenewal: string;
+  color: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface InboxItem {
+  id: string;
+  text: string;
+  createdAt: string;
+}
 
 export interface Goal {
   id: string;
@@ -158,4 +177,25 @@ export interface MoodEntry {
   mood: 1 | 2 | 3 | 4 | 5;
   note?: string;
   createdAt: string;
+}
+
+export interface AccountabilityPair {
+  id: string;
+  inviteCode: string;
+  habitName: string;
+  user1Id: string;
+  user1Name: string;
+  user1HabitId: string;
+  user2Id: string | null;
+  user2Name: string | null;
+  user2HabitId: string | null;
+  status: 'pending' | 'active';
+  createdAt: string;
+}
+
+export interface AccountabilityLog {
+  id: string;
+  pairId: string;
+  userId: string;
+  date: string;
 }
